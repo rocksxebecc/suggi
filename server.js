@@ -922,4 +922,15 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, handleApi };
+const handler = (req, res) => {
+  if (req.url && req.url.startsWith('/api/')) {
+    handleApi(req, res);
+  } else {
+    serveStatic(req, res);
+  }
+};
+
+module.exports = handler;
+module.exports.handler = handler;
+module.exports.server = server;
+module.exports.handleApi = handleApi;
