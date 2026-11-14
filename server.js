@@ -891,19 +891,23 @@ const server = http.createServer((req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log('');
-  console.log('  ╔══════════════════════════════════════════╗');
-  console.log('  ║        Zenspace Server Running           ║');
-  console.log(`  ║   http://localhost:${PORT}                   ║`);
-  console.log('  ╚══════════════════════════════════════════╝');
-  console.log('');
-  if (!GROQ_API_KEY) {
-    console.log('  ⚠️  GROQ_API_KEY not set in .env — Math Agent will not work.');
-    console.log('  ℹ️  Add it to .env: GROQ_API_KEY=gsk_...');
-  } else {
-    console.log('  ✅  Groq API key loaded — Math Agent ready!');
-  }
-  console.log('  ✅  Pollinations FLUX image generator ready!');
-  console.log('');
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  server.listen(PORT, () => {
+    console.log('');
+    console.log('  ╔══════════════════════════════════════════╗');
+    console.log('  ║        Zenspace Server Running           ║');
+    console.log(`  ║   http://localhost:${PORT}                   ║`);
+    console.log('  ╚══════════════════════════════════════════╝');
+    console.log('');
+    if (!GROQ_API_KEY) {
+      console.log('  ⚠️  GROQ_API_KEY not set in .env — Math Agent will not work.');
+      console.log('  ℹ️  Add it to .env: GROQ_API_KEY=gsk_...');
+    } else {
+      console.log('  ✅  Groq API key loaded — Math Agent ready!');
+    }
+    console.log('  ✅  Pollinations FLUX image generator ready!');
+    console.log('');
+  });
+}
+
+module.exports = server;
