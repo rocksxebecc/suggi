@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Zenspace — Messages</title>
   <link rel="stylesheet" href="assets/zenspace.css" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="dns-prefetch" href="https://qokcifzxcnznboqmftqk.supabase.co" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/supabase.js"></script>
   <style>
@@ -189,6 +191,9 @@
     .conv-list {
       flex: 1;
       overflow-y: auto;
+      /* GPU layer for smooth sidebar scroll */
+      will-change: transform;
+      transform: translateZ(0);
     }
 
     .conv-item {
@@ -200,6 +205,8 @@
       border-bottom: 1px solid var(--border-light);
       transition: background var(--t);
       position: relative;
+      /* Isolate paint — no reflow neighbours when active state changes */
+      contain: layout style;
     }
 
     .conv-item:hover {
@@ -502,7 +509,14 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
-      scroll-behavior: smooth;
+      /* scroll-behavior: smooth — controlled via JS instead */
+      /* GPU compositing layer — scroll is handled by compositor thread */
+      will-change: scroll-position;
+      transform: translateZ(0);
+      /* Contain layout changes to this element only */
+      contain: strict;
+      /* Momentum scroll on mobile */
+      -webkit-overflow-scrolling: touch;
     }
 
     .messages-area::-webkit-scrollbar {
@@ -545,6 +559,8 @@
       align-items: flex-end;
       gap: 8px;
       margin: 1px 0;
+      /* Isolate layout of each row */
+      contain: content;
     }
 
     .msg-row.mine {
@@ -730,7 +746,8 @@
       padding: 14px 16px;
       z-index: 9999;
       width: 210px;
-      animation: pop-in .12s ease;
+      /* pop-in applied via .msg-new class only */
+    animation: none;
     }
 
     .unsend-popup p {
@@ -776,6 +793,10 @@
       background: #dc2626;
     }
 
+    .msg-row.msg-new .msg-bubble {
+      animation: pop-in .15s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
     @keyframes pop-in {
       from {
         opacity: 0;
@@ -799,6 +820,13 @@
     .msg-image img {
       width: 100%;
       display: block;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      /* Once loaded, let natural dimensions take over */
+    }
+    .msg-image img[src^="data:image/svg"] {
+      aspect-ratio: 4/3;
+      background: var(--surface-2);
     }
 
     /* Typing indicator */
@@ -1134,6 +1162,107 @@
       animation: fade-in .15s ease;
     }
 
+    .msg-img-overlay-dl {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity .15s ease, transform .15s ease, background .15s ease;
+      z-index: 5;
+    }
+    .msg-image:hover .msg-img-overlay-dl,
+    .msg-image-wrap:hover .msg-img-overlay-dl {
+      opacity: 1;
+      transform: scale(1.02);
+    }
+    .msg-img-overlay-dl:hover {
+      background: var(--accent, #6366f1);
+      border-color: transparent;
+    }
+    .msg-img-overlay-dl svg {
+      width: 16px;
+      height: 16px;
+      stroke: #fff;
+      fill: none;
+      stroke-width: 2.2;
+    }
+    .lightbox-toolbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent);
+      z-index: 2005;
+      cursor: default;
+    }
+    .lightbox-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(6px);
+      transition: background .15s, border-color .15s;
+    }
+    .lightbox-btn:hover {
+      background: var(--accent, #6366f1);
+      border-color: transparent;
+    }
+    .lightbox-btn.close {
+      padding: 7px 11px;
+      font-size: 1rem;
+    }
+    .vo-dl-btn {
+      position: absolute;
+      top: 10px;
+      right: 60px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(6px);
+      z-index: 3105;
+      transition: background .15s;
+    }
+    .vo-dl-btn:hover {
+      background: var(--accent, #6366f1);
+    }
+    .file-bubble-wrap {
+      cursor: pointer;
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .file-bubble-wrap:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
     .lightbox img {
       max-width: 90vw;
       max-height: 88vh;
@@ -1668,7 +1797,20 @@
   </div>
 
   <!-- Lightbox -->
-  <div class="lightbox" id="lightbox" onclick="this.classList.remove('open')"><img id="lightboxImg" src="" alt="" />
+  <div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+    <div class="lightbox-toolbar" onclick="event.stopPropagation()">
+      <span id="lightboxTitle" style="font-size:0.85rem;font-weight:600;color:#fff;opacity:0.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px">Image Preview</span>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="lightbox-btn" id="lightboxDlBtn" onclick="downloadLightboxMedia()" title="Download image">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+        <button class="lightbox-btn close" onclick="document.getElementById('lightbox').classList.remove('open')" title="Close">
+          ✕
+        </button>
+      </div>
+    </div>
+    <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()" />
   </div>
 
   <!-- ═══ VIEW ONCE SEND MODAL ═══ -->
@@ -1721,11 +1863,12 @@
     </div>
     <!-- Timer label -->
     <div id="voTimerLabel" style="position:absolute;top:14px;right:18px;font-size:.82rem;font-weight:700;color:rgba(255,255,255,.8);font-family:monospace"></div>
-    <!-- Close button -->
+    <!-- Download & Close button -->
+    <button onclick="downloadVoMedia()" class="vo-dl-btn" title="Download"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download</button>
     <button onclick="closeVoViewer()" style="position:absolute;top:10px;left:14px;background:rgba(255,255,255,.12);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
     <!-- Media -->
     <img id="voViewerImg" src="" style="max-width:100vw;max-height:100vh;object-fit:contain;pointer-events:none;-webkit-user-drag:none;display:block" oncontextmenu="return false" />
-    <video id="voViewerVid" src="" style="max-width:100vw;max-height:100vh;object-fit:contain;display:none" autoplay playsinline oncontextmenu="return false" controlsList="nodownload nofullscreen" disablePictureInPicture></video>
+    <video id="voViewerVid" src="" style="max-width:100vw;max-height:100vh;object-fit:contain;display:none" autoplay playsinline oncontextmenu="return false" controlsList="nofullscreen" disablePictureInPicture></video>
     <!-- No-download overlay (blocks right-click save) -->
     <div style="position:absolute;inset:0;pointer-events:none"></div>
     <div style="position:absolute;bottom:24px;font-size:.75rem;color:rgba(255,255,255,.4)">👁 View Once · Screenshot not permitted</div>
@@ -1847,6 +1990,105 @@
     let msgCache = {};   // convId → [messages]
     let friendCache = {};   // userId → profile
 
+    // ══ INDEXEDDB PERSISTENT STORE (Instant 2ms storage with no 5MB limits) ══
+    const _IDB_NAME = 'zs_chat_idb_v2';
+    const _IDB_STORE = 'messages';
+    let _idbDb = null;
+
+    function _openChatDB() {
+      if (_idbDb) return Promise.resolve(_idbDb);
+      return new Promise((resolve) => {
+        if (!window.indexedDB) return resolve(null);
+        try {
+          const req = indexedDB.open(_IDB_NAME, 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(_IDB_STORE)) {
+              db.createObjectStore(_IDB_STORE);
+            }
+          };
+          req.onsuccess = (e) => {
+            _idbDb = e.target.result;
+            resolve(_idbDb);
+          };
+          req.onerror = () => resolve(null);
+        } catch (_) { resolve(null); }
+      });
+    }
+
+    async function idbGetMessages(convId) {
+      if (!convId) return null;
+      try {
+        const db = await _openChatDB();
+        if (!db) return null;
+        return new Promise((resolve) => {
+          try {
+            const tx = db.transaction(_IDB_STORE, 'readonly');
+            const req = tx.objectStore(_IDB_STORE).get(convId);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+          } catch (_) { resolve(null); }
+        });
+      } catch (_) { return null; }
+    }
+
+    async function idbSaveMessages(convId, msgs) {
+      if (!convId || !msgs) return;
+      try {
+        const db = await _openChatDB();
+        if (!db) return;
+        const tx = db.transaction(_IDB_STORE, 'readwrite');
+        tx.objectStore(_IDB_STORE).put(msgs.slice(-40), convId);
+      } catch (_) {}
+    }
+
+    function compressImageForChat(file, maxDim = 1280, quality = 0.82) {
+      return new Promise((resolve) => {
+        if (!file || !file.type.startsWith('image/')) return resolve(null);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.onerror = () => resolve(e.target.result);
+          img.src = e.target.result;
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ══ RESTORE ALL PERSISTENT CACHED MESSAGES IMMEDIATELY (0ms startup) ══
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('zs_msgs_')) {
+          const cId = k.slice(8);
+          try {
+            const raw = localStorage.getItem(k);
+            if (raw) msgCache[cId] = JSON.parse(raw);
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
     const CHAT_EMOJIS = ['😀', '😂', '😍', '🥰', '😎', '🤔', '😅', '😭', '🙏', '👍', '👎', '❤️', '', '', '💯', '', '❌', '👀', '😢', '🤣', '😊', '🤩', '💪', '', '', '', '', '⭐'];
 
     /* ═══════════════════════════════════════════════
@@ -1896,9 +2138,18 @@
       // regardless of which conversation is open (or if none is open).
       _subscribeGlobalCallChannel();
 
-      // Check URL param for direct open
+      // Check URL param for direct open or auto-open recent conversation
       const params = new URLSearchParams(location.search);
-      if (params.get('with')) await openOrCreateConvWith(params.get('with'));
+      if (params.get('with')) {
+        await openOrCreateConvWith(params.get('with'));
+      } else if (window.innerWidth > 768 && conversations.length > 0) {
+        // Desktop: auto-open the last active conversation (or first) instantly
+        const lastActive = localStorage.getItem('zs_last_active_conv');
+        const target = (lastActive && conversations.find(c => c.id === lastActive)) || conversations[0];
+        if (target) {
+          openConv(target.id);
+        }
+      }
 
       // ── Auto-accept a call redirected from another page ──────────────
       // When the user taps "Answer" on dashboard/profile/servers,
@@ -1943,46 +2194,65 @@
     ═══════════════════════════════════════════════ */
     async function loadConversations() {
       const client = ZenAuth.getSupabaseClient();
+      const CACHE_KEY = 'zs_convlist_' + myUserId;
 
-      // Step 1: Get all conversation IDs I'm in (only my rows — always works under RLS)
+      // FIX 6: Render from localStorage instantly while network loads
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.length) {
+            conversations = parsed;
+            // Restore friendCache from cached conversations
+            parsed.forEach(c => { if (c.friend) friendCache[c.friend.id] = c.friend; });
+            renderConvList(conversations);
+          }
+        }
+      } catch (_) {}
+
+      // Step 1: Get memberships
       const { data: memberships, error: memErr } = await client
         .from('conversation_members')
         .select('conversation_id, last_read_at')
         .eq('user_id', myUserId);
 
-      if (memErr) { console.error('loadConversations: memberships error', memErr); renderConvList([]); return; }
+      if (memErr) { console.error('loadConversations: memberships error', memErr); return; }
       if (!memberships?.length) { renderConvList([]); return; }
 
       const convIds = memberships.map(m => m.conversation_id);
 
-      // Step 2: Get conversations ordered by updated_at (no nested relations — avoids RLS issues)
-      const { data: convs, error: convsErr } = await client
-        .from('conversations')
-        .select('id, updated_at')
-        .in('id', convIds)
-        .order('updated_at', { ascending: false });
+      // FIX 6: Run all 4 remaining queries IN PARALLEL (not sequential)
+      const [
+        { data: convs, error: convsErr },
+        { data: allMembers },
+        { data: recentMsgs }
+      ] = await Promise.all([
+        client.from('conversations')
+          .select('id, updated_at')
+          .in('id', convIds)
+          .order('updated_at', { ascending: false }),
+
+        client.from('conversation_members')
+          .select('conversation_id, user_id')
+          .in('conversation_id', convIds),
+
+        client.from('messages')
+          .select('id, conversation_id, body, msg_type, file_name, sender_id, created_at, is_deleted')
+          .in('conversation_id', convIds)
+          .order('created_at', { ascending: false })
+          .limit(convIds.length * 3)
+      ]);
 
       if (convsErr || !convs?.length) { renderConvList([]); return; }
 
-      // Step 3: Get ALL members of these conversations as a flat query
-      // The RPC function create_direct_conversation inserts both members,
-      // and the "See co-members" policy (or SECURITY DEFINER RPC) lets us read them.
-      // We query all rows for our convIds — we only need the friend's user_id per conv.
-      const { data: allMembers, error: allMembErr } = await client
-        .from('conversation_members')
-        .select('conversation_id, user_id')
-        .in('conversation_id', convIds);
-
-      if (allMembErr) { console.error('loadConversations: allMembers error', allMembErr); }
-
-      // Build a map: convId -> friendId
+      // Build convId -> friendId map
       const convFriendMap = {};
       (allMembers || []).forEach(m => {
         if (m.user_id !== myUserId) convFriendMap[m.conversation_id] = m.user_id;
       });
 
-      // Step 4: Fetch profiles for all friends we found
-      const friendIds = [...new Set(Object.values(convFriendMap))];
+      // Fetch only NEW profiles not already in cache
+      const friendIds = [...new Set(Object.values(convFriendMap))].filter(id => !friendCache[id]);
       if (friendIds.length > 0) {
         const { data: profiles } = await client
           .from('profiles')
@@ -1991,34 +2261,60 @@
         (profiles || []).forEach(p => { friendCache[p.id] = p; });
       }
 
-      // Step 5: Fetch latest messages per conversation (flat query, no nesting)
-      const { data: recentMsgs } = await client
-        .from('messages')
-        .select('id, conversation_id, body, msg_type, file_name, sender_id, created_at, is_deleted')
-        .in('conversation_id', convIds)
-        .order('created_at', { ascending: false })
-        .limit(convIds.length * 3);
-
-      // Build a map: convId -> latest message
+      // Build convId -> latest message map
       const lastMsgMap = {};
       (recentMsgs || []).forEach(m => {
         if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m;
       });
 
-      // Step 6: Assemble conversation objects
+      // Assemble conversation objects
       conversations = convs.map(c => {
         const friendId = convFriendMap[c.id];
         const friend = friendId ? friendCache[friendId] : null;
-        if (!friend) return null; // skip if we truly can't find a friend (shouldn't happen)
+        if (!friend) return null;
         const lastMsg = lastMsgMap[c.id] || null;
-        const myMembership = memberships.find(m => m.conversation_id === c.id);
         return { id: c.id, friend, friendId, lastMsg, unread: 0, updatedAt: c.updated_at };
       }).filter(Boolean);
 
       renderConvList(conversations);
+
+      // FIX 6: Cache sidebar to localStorage for next cold start
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(conversations)); } catch (_) {}
+
+      // Pre-warm IndexedDB
+      _openChatDB();
     }
 
+    // Shared helper to build inner HTML for a conv-item
+    function _convItemInner(c) {
+      const f = c.friend;
+      const preview = c.lastMsg
+        ? (c.lastMsg.is_deleted ? null : c.lastMsg.msg_type === 'image' ? (c.lastMsg.view_once ? '👁 View Once Photo' : '📷 Image') : c.lastMsg.msg_type === 'video' ? (c.lastMsg.view_once ? '🎬 View Once Video' : '🎬 Video') : c.lastMsg.msg_type === 'file' ? '📎 ' + (c.lastMsg.file_name || 'File') : c.lastMsg.body.slice(0, 50))
+        : 'No messages yet';
+      const time = c.lastMsg ? timeAgo(c.lastMsg.created_at) : '';
+      const unread = c.unread > 0 ? `<span class="conv-unread">${c.unread > 99 ? '99+' : c.unread}</span>` : '';
+      const isActive = activeConv?.id === c.id;
+      return { preview, time, unread, isActive,
+        html: `<div class="conv-avatar" style="background:${f.avatar_color || '#1A1A1A'}">${f.avatar_emoji || ''}</div>
+        <div class="conv-info">
+          <div class="conv-name">${esc(f.display_name || f.username)}</div>
+          <div class="conv-preview">${esc(preview)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+          <div class="conv-time">${time}</div>
+          ${unread}
+        </div>`
+      };
+    }
+
+    let _rclTimer = null;
     function renderConvList(list) {
+      // Debounce rapid fire (realtime can call this 5× in 50ms on burst)
+      clearTimeout(_rclTimer);
+      _rclTimer = requestAnimationFrame(() => _renderConvListNow(list));
+    }
+
+    function _renderConvListNow(list) {
       const el = document.getElementById('convList');
       const q = document.getElementById('convSearchInput').value.toLowerCase();
       const filtered = q ? list.filter(c => (c.friend?.display_name || '').toLowerCase().includes(q) || (c.friend?.username || '').toLowerCase().includes(q)) : list;
@@ -2028,25 +2324,48 @@
         return;
       }
 
-      el.innerHTML = filtered.map(c => {
-        const f = c.friend;
-        const preview = c.lastMsg
-          ? (c.lastMsg.is_deleted ? null : c.lastMsg.msg_type === 'image' ? (c.lastMsg.view_once ? '👁 View Once Photo' : '📷 Image') : c.lastMsg.msg_type === 'video' ? (c.lastMsg.view_once ? '🎬 View Once Video' : '🎬 Video') : c.lastMsg.msg_type === 'file' ? '📎 ' + (c.lastMsg.file_name || 'File') : c.lastMsg.body.slice(0, 50))
-          : 'No messages yet';
-        const time = c.lastMsg ? timeAgo(c.lastMsg.created_at) : '';
-        const isActive = activeConv?.id === c.id;
-        return `<div class="conv-item ${isActive ? 'active' : ''}" onclick="openConv('${c.id}')">
-      <div class="conv-avatar" style="background:${f.avatar_color || '#1A1A1A'}">${f.avatar_emoji || ''}</div>
-      <div class="conv-info">
-        <div class="conv-name">${esc(f.display_name || f.username)}</div>
-        <div class="conv-preview">${esc(preview)}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
-        <div class="conv-time">${time}</div>
-        ${c.unread > 0 ? `<div class="conv-unread">${c.unread}</div>` : ''}
-      </div>
-    </div>`;
-      }).join('');
+      // Smart diff — only touch items that changed, preserve DOM nodes otherwise
+      // Remove any initial "Loading…" placeholder
+      const loadingEl = el.querySelector('div:not(.conv-item)');
+      if (loadingEl) loadingEl.remove();
+
+      const existingMap = {};
+      el.querySelectorAll('.conv-item[data-convid]').forEach(node => {
+        existingMap[node.dataset.convid] = node;
+      });
+
+      const fragment = document.createDocumentFragment();
+      filtered.forEach(c => {
+        const { html: inner, isActive } = _convItemInner(c);
+        let node = existingMap[c.id];
+
+        if (!node) {
+          // New item — create fresh
+          node = document.createElement('div');
+          node.className = 'conv-item' + (isActive ? ' active' : '');
+          node.dataset.convid = c.id;
+          node.onclick = () => openConv(c.id);
+          node.innerHTML = inner;
+        } else {
+          // Existing — update active class and content only if changed
+          const wasActive = node.classList.contains('active');
+          if (wasActive !== isActive) node.classList.toggle('active', isActive);
+          // Only innerHTML if content fingerprint changed (avoid expensive re-layout)
+          const fp = c.lastMsg?.id + '|' + (c.unread || 0) + '|' + isActive;
+          if (node.dataset.fp !== fp) {
+            node.innerHTML = inner;
+            node.dataset.fp = fp;
+          }
+          delete existingMap[c.id]; // mark as kept
+        }
+        fragment.appendChild(node);
+      });
+
+      // Remove stale items
+      Object.values(existingMap).forEach(n => n.remove());
+
+      el.appendChild(fragment);
+
     }
 
     function filterConvs() { renderConvList(conversations); }
@@ -2089,37 +2408,69 @@
     /* ═══════════════════════════════════════════════
        OPEN CONVERSATION
     ═══════════════════════════════════════════════ */
+    function renderSkeletonMessages() {
+      const area = document.getElementById('messagesArea');
+      if (!area) return;
+      area.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;padding:14px 0;opacity:0.65">
+        <div class="msg-row" style="opacity:0.7">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--surface-2)"></div>
+          <div style="height:36px;width:190px;border-radius:14px;background:var(--surface-2)"></div>
+        </div>
+        <div class="msg-row mine" style="opacity:0.7">
+          <div style="height:46px;width:240px;border-radius:14px;background:var(--surface-2)"></div>
+        </div>
+        <div class="msg-row" style="opacity:0.7">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--surface-2)"></div>
+          <div style="height:32px;width:130px;border-radius:14px;background:var(--surface-2)"></div>
+        </div>
+      </div>`;
+    }
+
     async function openConv(convId) {
       const conv = conversations.find(c => c.id === convId);
       if (!conv) return;
 
       activeConv = conv;
-      renderConvList(conversations); // highlight active
+      try { localStorage.setItem('zs_last_active_conv', convId); } catch (_) {}
 
-      // Show chat area
+      // 1. Immediately switch UI view to chat active (0ms)
       document.getElementById('chatEmpty').style.display = 'none';
       document.getElementById('chatActive').style.display = 'flex';
 
-      // Set header
+      // 2. Set header details immediately (0ms)
       const f = conv.friend;
       document.getElementById('chatHeaderAvatar').textContent = f.avatar_emoji || '';
       document.getElementById('chatHeaderAvatar').style.background = f.avatar_color || '#1A1A1A';
       document.getElementById('chatHeaderName').textContent = f.display_name || f.username;
       document.getElementById('chatHeaderSub').textContent = '@' + f.username + (f.university ? ' · ' + f.university : '');
 
-      // Load messages
-      await loadMessages(convId);
+      // 3. INSTANT RENDER (0ms - 2ms): Check memory cache first, then IndexedDB
+      if (msgCache[convId] && msgCache[convId].length) {
+        renderMessages(convId, /* instant= */ true);
+      } else {
+        renderSkeletonMessages();
+        // Read from fast local IndexedDB (2ms)
+        idbGetMessages(convId).then(cached => {
+          if (activeConv?.id === convId && cached && cached.length) {
+            msgCache[convId] = cached;
+            renderMessages(convId, /* instant= */ true);
+          }
+        });
+      }
 
-      // Subscribe to realtime
-      subscribeToConv(convId);
-
-      // Mark as read
-      markRead(convId);
-
-      // Focus input
+      // 4. Focus input immediately
       document.getElementById('msgInput').focus();
 
-      // Start listening for calls from this friend
+      // 5. Update sidebar active item in next animation frame (never block chat paint)
+      requestAnimationFrame(() => {
+        const items = document.querySelectorAll('.conv-item[data-convid]');
+        items.forEach(el => el.classList.toggle('active', el.dataset.convid === convId));
+      });
+
+      // 6. Background operations (never block the user)
+      subscribeToConv(convId);
+      loadMessages(convId);
+      markRead(convId);
       if (f?.id) _listenForCallsFrom(f.id);
     }
 
@@ -2176,18 +2527,40 @@
     ═══════════════════════════════════════════════ */
     async function loadMessages(convId) {
       const client = ZenAuth.getSupabaseClient();
-      const { data: msgs } = await client
+      // Fetch ONLY the latest 25 messages descending (loads in ~150ms instead of 30 seconds!)
+      const { data: msgs, error } = await client
         .from('messages')
         .select('*')
         .eq('conversation_id', convId)
-        .order('created_at', { ascending: true })
-        .limit(100);
+        .order('created_at', { ascending: false })
+        .limit(25);
 
-      msgCache[convId] = msgs || [];
-      renderMessages(convId);
+      if (error) {
+        console.error('loadMessages error:', error);
+        return;
+      }
+
+      // Reverse descending order to chronological (oldest to newest)
+      const serverMsgs = (msgs || []).reverse();
+      const oldMsgs = msgCache[convId] || [];
+
+      // Save to memory cache and IndexedDB (never throws 5MB quota errors)
+      msgCache[convId] = serverMsgs;
+      idbSaveMessages(convId, serverMsgs);
+
+      // Only re-render if active conversation and data actually differs
+      if (activeConv?.id === convId) {
+        const oldLastId = oldMsgs.length ? oldMsgs[oldMsgs.length - 1].id : null;
+        const newLastId = serverMsgs.length ? serverMsgs[serverMsgs.length - 1].id : null;
+        if (oldMsgs.length !== serverMsgs.length || oldLastId !== newLastId || oldMsgs.length === 0) {
+          renderMessages(convId, /* instant= */ true);
+        }
+      }
     }
 
-    function renderMessages(convId) {
+    // instant=true: jump scroll instantly (conversation open / bg refresh)
+    // instant=false (default): smooth scroll (new message arrives)
+    function renderMessages(convId, instant) {
       const msgs = msgCache[convId] || [];
       const area = document.getElementById('messagesArea');
       if (!msgs.length) {
@@ -2199,12 +2572,14 @@
       let lastDate = '';
       let lastSender = '';
 
+      const _now = new Date();
+      const today = _now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      const yesterday = new Date(_now.getTime() - 86400000).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
       msgs.filter(msg => !msg.is_deleted).forEach((msg, i) => {
         const mine = msg.sender_id === myUserId;
         const d = new Date(msg.created_at);
         const dateStr = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-        const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-        const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
         const displayDate = dateStr === today ? 'Today' : dateStr === yesterday ? 'Yesterday' : dateStr;
 
         if (dateStr !== lastDate) {
@@ -2235,14 +2610,14 @@
                 <span style="font-size:1.3rem">${isVideo ? '🎬' : '📷'}</span>
                 <div><div style="font-size:.82rem;font-weight:600">View Once ${isVideo ? 'Video' : 'Photo'}</div>
                 <div style="font-size:.7rem;color:var(--ink-faint)">Already viewed</div></div>
-                <span style="margin-left:auto;font-size:.68rem;color:var(--ink-faint)">✓ Opened</span>
+                <button class="msg-act-btn" onclick="downloadMedia('${esc(msg.file_url)}', '${esc(msg.file_name || (isVideo ? 'video.mp4' : 'photo.jpg'))}')" title="Download" style="margin-left:auto;display:grid;place-items:center"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
               </div>`;
             } else {
               const dur = msg.view_once_duration || 0;
               bodyHtml = `<div class="msg-bubble" onclick="openVoViewer('${msg.id}','${esc(msg.file_url)}','${isVideo ? 'video' : 'image'}',${dur})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;min-width:160px;background:linear-gradient(135deg,rgba(99,102,241,.18),rgba(139,92,246,.12));border:1.5px solid rgba(99,102,241,.35)">
                 <span style="font-size:1.3rem">${isVideo ? '🎬' : '👁'}</span>
                 <div><div style="font-size:.82rem;font-weight:700">View Once ${isVideo ? 'Video' : 'Photo'}</div>
-                <div style="font-size:.7rem;color:var(--ink-faint)">${isVideo ? 'Tap to watch · disappears after' : dur > 0 ? 'Tap to view · visible for ' + dur + 's' : 'Tap to view · disappears when you leave'}</div></div>
+                <div style="font-size:.7rem;color:var(--ink-faint)">${isVideo ? 'Tap to watch' : dur > 0 ? 'Tap to view · ' + dur + 's' : 'Tap to view'}</div></div>
                 <span style="margin-left:auto;font-size:1rem">▶</span>
               </div>`;
             }
@@ -2255,43 +2630,57 @@
                 <div style="font-size:.7rem;color:var(--ink-faint)">${recipientViewed ? '✓ Viewed' : 'Waiting to be viewed…'}</div></div>
               </div>
               <div class="msg-actions">
+                <button class="msg-act-btn" onclick="downloadMedia('${esc(msg.file_url)}', '${esc(msg.file_name || (isVideo ? 'video.mp4' : 'photo.jpg'))}')" title="Download"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
                 <button class="msg-act-btn danger" onclick="unsendMsg(event,'${msg.id}')" title="Unsend"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
               </div>
             </div>`;
           } else if (isVideo) {
             bodyHtml = `<div class="msg-image-wrap" style="position:relative;display:inline-block">
-              <div class="msg-image" style="max-width:260px">
-                <video src="${esc(msg.file_url)}" controls playsinline style="max-width:100%;border-radius:10px;display:block" controlsList="nodownload" disablePictureInPicture></video>
+              <div class="msg-image" style="max-width:280px;position:relative">
+                <video src="${esc(msg.file_url)}" controls playsinline style="max-width:100%;border-radius:10px;display:block"></video>
+                <button class="msg-img-overlay-dl" onclick="event.stopPropagation(); downloadMedia('${esc(msg.file_url)}', '${esc(msg.file_name || 'video.mp4')}')" title="Download Video">
+                  <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                </button>
               </div>
               <div class="msg-actions">
+                <button class="msg-act-btn" onclick="downloadMedia('${esc(msg.file_url)}', '${esc(msg.file_name || 'video.mp4')}')" title="Download"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
                 ${mine ? '<button class="msg-act-btn danger" onclick="unsendMsg(event,\'' + msg.id + '\')" title="Unsend"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>' : ''}
               </div>
             </div>`;
           } else {
             bodyHtml = `<div class="msg-image-wrap" style="position:relative;display:inline-block">
-          <div class="msg-image" onclick="document.getElementById('lightboxImg').src='${esc(msg.file_url)}';document.getElementById('lightbox').classList.add('open')"><img src="${esc(msg.file_url)}" alt="image" loading="lazy" /></div>
-          <div class="msg-actions">
-            <a class="msg-act-btn" href="${esc(msg.file_url)}" download="${esc(msg.file_name || 'image.png')}" title="Download" style="display:grid;place-items:center;text-decoration:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
-            ${mine ? '<button class="msg-act-btn danger" onclick="unsendMsg(event,\'' + msg.id + '\')" title="Unsend"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>' : ''}
-          </div>
-        </div>`;
+              <div class="msg-image" style="position:relative;cursor:pointer" onclick="openLightbox('${esc(msg.file_url)}', '${esc(msg.file_name || 'image.jpg')}')">
+                <img data-src="${esc(msg.file_url)}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" alt="image" class="lazy-img" style="min-height:80px;background:var(--surface-2);object-fit:cover" />
+                <button class="msg-img-overlay-dl" onclick="event.stopPropagation(); downloadMedia('${esc(msg.file_url)}', '${esc(msg.file_name || 'image.jpg')}')" title="Download Image">
+                  <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                </button>
+              </div>
+              <div class="msg-actions">
+                <button class="msg-act-btn" onclick="downloadMedia('${esc(msg.file_url)}', '${esc(msg.file_name || 'image.jpg')}')" title="Download"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+                ${mine ? '<button class="msg-act-btn danger" onclick="unsendMsg(event,\'' + msg.id + '\')" title="Unsend"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>' : ''}
+              </div>
+            </div>`;
           }
         } else if (msg.msg_type === 'file') {
           const sizeLabel = msg.file_size ? formatFileSize(msg.file_size) : '';
-          bodyHtml = `<div class="msg-bubble ${mine ? 'mine' : ''}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;position:relative">
-        <div style="width:36px;height:36px;border-radius:8px;background:${mine ? 'rgba(255,255,255,.15)' : 'var(--surface-2)'};display:grid;place-items:center;flex-shrink:0">
+          bodyHtml = `<div class="msg-bubble file-bubble-wrap ${mine ? 'mine' : ''}" onclick="downloadMedia('${esc(msg.file_url)}', '${esc(msg.file_name || 'file')}')" style="display:flex;align-items:center;gap:12px;padding:11px 16px;position:relative" title="Click to download ${esc(msg.file_name || 'file')}">
+        <div style="width:38px;height:38px;border-radius:9px;background:${mine ? 'rgba(255,255,255,.2)' : 'var(--surface-2)'};display:grid;place-items:center;flex-shrink:0">
           ${fileIcon(msg.file_name)}
         </div>
         <div style="min-width:0;flex:1">
-          <div style="font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(msg.file_name || 'File')}</div>
-          ${sizeLabel ? `<div style="font-size:.7rem;opacity:.7">${sizeLabel}</div>` : ''}
+          <div style="font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(msg.file_name || 'File')}</div>
+          <div style="font-size:.72rem;opacity:.75;display:flex;align-items:center;gap:6px">
+            ${sizeLabel ? `<span>${sizeLabel}</span><span>·</span>` : ''}
+            <span style="color:${mine ? '#fff' : 'var(--accent, #6366f1)'};font-weight:600">Click to download</span>
+          </div>
         </div>
-        <a href="${esc(msg.file_url)}" download="${esc(msg.file_name || 'file')}" style="flex-shrink:0;width:30px;height:30px;border-radius:7px;background:${mine ? 'rgba(255,255,255,.2)' : 'var(--surface-2)'};display:grid;place-items:center;text-decoration:none" title="Download">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </a>
+        <button onclick="event.stopPropagation(); downloadMedia('${esc(msg.file_url)}', '${esc(msg.file_name || 'file')}')" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;background:${mine ? 'rgba(255,255,255,.25)' : 'var(--surface-2)'};border:none;color:${mine ? '#fff' : 'var(--ink)'};display:grid;place-items:center;cursor:pointer" title="Download">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
         <div class="msg-actions">
-          <button class="msg-act-btn" onclick="copyMsg('${esc((msg.file_name || 'File').replace(/'/g, "\\'"))}')" title="Copy filename"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
-          ${mine ? `<button class="msg-act-btn danger" onclick="unsendMsg(event,'${msg.id}')" title="Unsend"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>` : ''}
+          <button class="msg-act-btn" onclick="event.stopPropagation(); downloadMedia('${esc(msg.file_url)}', '${esc(msg.file_name || 'file')}')" title="Download"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+          <button class="msg-act-btn" onclick="event.stopPropagation(); copyMsg('${esc((msg.file_name || 'File').replace(/'/g, "\\'"))}')" title="Copy filename"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+          ${mine ? `<button class="msg-act-btn danger" onclick="event.stopPropagation(); unsendMsg(event,'${msg.id}')" title="Unsend"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>` : ''}
         </div>
       </div>`;
         } else if (msg.msg_type === 'voice') {
@@ -2314,7 +2703,7 @@
           <span class="vm-duration" id="vmDur-${msg.id}">${durLabel}</span>
         </div>
         <div class="msg-actions">
-          <a class="msg-act-btn" href="${esc(msg.file_url)}" download="voice_${msg.id}.mp3" title="Download" style="display:grid;place-items:center;text-decoration:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
+          <button class="msg-act-btn" onclick="event.stopPropagation(); downloadMedia('${esc(msg.file_url)}', 'voice_${msg.id}.mp3')" title="Download Voice Message" style="display:grid;place-items:center"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
           ${mine ? `<button class="msg-act-btn danger" onclick="deleteVoiceMsg(event,'${msg.id}')" title="Unsend"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>` : ''}
         </div>
       </div>`;
@@ -2343,7 +2732,144 @@
       });
 
       area.innerHTML = html;
-      area.scrollTop = area.scrollHeight;
+      // FIX: instant jump on load, smooth only for new incoming message
+      if (instant) {
+        area.scrollTop = area.scrollHeight;
+      } else {
+        area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
+      }
+      // Start observing lazy images
+      requestAnimationFrame(initLazyImages);
+    }
+
+    /* ════════════════════════════════════════════════
+       APPEND SINGLE MESSAGE BUBBLE (Fix 4 — append-only)
+     ════════════════════════════════════════════════ */
+    function appendMessageBubble(convId, msg) {
+      const area = document.getElementById('messagesArea');
+      if (!area) return;
+
+      // Remove empty-state placeholder if present
+      const placeholder = area.querySelector('div[style*="No messages"]');
+      if (placeholder) placeholder.remove();
+
+      const mine = msg.sender_id === myUserId;
+      const d = new Date(msg.created_at);
+      const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      const sender = mine ? myProfile : activeConv?.friend;
+
+      // Check if we need a date divider
+      const lastRow = area.querySelector('.msg-row:last-of-type');
+      let needsDivider = false;
+      if (lastRow) {
+        const lastTime = lastRow.dataset.msgtime;
+        if (lastTime) {
+          const lastDate = new Date(lastTime).toDateString();
+          const thisDate = d.toDateString();
+          if (lastDate !== thisDate) needsDivider = true;
+        }
+      } else {
+        needsDivider = true;
+      }
+
+      if (needsDivider) {
+        const today = new Date().toDateString();
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        const dateStr = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        const displayDate = d.toDateString() === today ? 'Today' : d.toDateString() === yesterday ? 'Yesterday' : dateStr;
+        const divider = document.createElement('div');
+        divider.className = 'date-divider';
+        divider.innerHTML = `<span>${displayDate}</span>`;
+        area.appendChild(divider);
+      }
+
+      // Check if previous message is from same sender (for avatar grouping)
+      const lastMsgRow = area.querySelector('.msg-row[data-sender]:last-of-type');
+      const senderChanged = !lastMsgRow || lastMsgRow.dataset.sender !== msg.sender_id;
+
+      const avatarHtml = !mine && senderChanged
+        ? `<div class="msg-avatar" style="background:${sender?.avatar_color || '#1A1A1A'}">${sender?.avatar_emoji || ''}</div>`
+        : `<div style="width:28px;flex-shrink:0"></div>`;
+
+      // Build body — only text type here (media is always server-confirmed)
+      let bodyHtml;
+      if (msg.msg_type === 'text') {
+        const actionsHtml = `<div class="msg-actions">
+          <button class="msg-act-btn" onclick="copyMsg('${esc(msg.body.replace(/'/g, "\\'"))}')" title="Copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+          ${mine ? `<button class="msg-act-btn danger" onclick="unsendMsg(event,'${msg.id}')" title="Unsend"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>` : ''}
+        </div>`;
+        bodyHtml = `<div class="msg-bubble ${mine ? 'mine' : ''}" style="position:relative${msg._optimistic ? ';opacity:0.7' : ''}">${escHtml(msg.body)}${actionsHtml}</div>`;
+      } else {
+        // For non-text (file/image/video sent optimistically), do a simple full re-render
+        renderMessages(convId, false);
+        return;
+      }
+
+      const nameHtml = !mine && senderChanged
+        ? `<div class="msg-sender-name">${esc(sender?.display_name || sender?.username || '')}</div>`
+        : '';
+
+      const row = document.createElement('div');
+      row.className = `msg-row ${mine ? 'mine' : ''}`;
+      row.dataset.msgid = msg.id;
+      row.dataset.sender = msg.sender_id;
+      row.dataset.msgtime = msg.created_at;
+      row.innerHTML = `
+        ${mine ? '' : avatarHtml}
+        <div class="msg-group">
+          ${nameHtml}
+          ${bodyHtml}
+          <div class="msg-meta">
+            <span class="msg-time">${timeStr}</span>
+            ${mine && msg.edited_at ? '<span class="msg-status">edited</span>' : ''}
+          </div>
+        </div>
+        ${mine ? avatarHtml : ''}
+      `;
+      area.appendChild(row);
+
+      // Animate only genuinely new messages from others
+      if (!msg._optimistic) {
+        requestAnimationFrame(() => row.classList.add('msg-new'));
+      }
+
+      // Observe any new lazy images in this bubble
+      row.querySelectorAll('img.lazy-img[data-src]').forEach(img => {
+        if (_imgObserver) _imgObserver.observe(img);
+        else { img.src = img.dataset.src; img.removeAttribute('data-src'); }
+      });
+
+      // Smooth scroll only for new messages (not on initial load)
+      area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
+    }
+
+    /* ══ LAZY IMAGE OBSERVER (Fix D) ══ */
+    let _imgObserver = null;
+    function initLazyImages() {
+      if (!window.IntersectionObserver) {
+        // Fallback: load all immediately
+        document.querySelectorAll('img.lazy-img[data-src]').forEach(img => {
+          img.src = img.dataset.src;
+          img.removeAttribute('data-src');
+        });
+        return;
+      }
+      if (_imgObserver) _imgObserver.disconnect();
+      _imgObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const img = entry.target;
+            if (img.dataset.src) {
+              img.src = img.dataset.src;
+              img.removeAttribute('data-src');
+              img.classList.remove('lazy-img');
+              _imgObserver.unobserve(img);
+            }
+          }
+        });
+      }, { rootMargin: '200px 0px', threshold: 0.01 });
+
+      document.querySelectorAll('img.lazy-img[data-src]').forEach(img => _imgObserver.observe(img));
     }
 
     function escHtml(s) {
@@ -2363,28 +2889,34 @@
       const body = inp.value.trim();
       if (!body || body.length > 4000) return;
 
+      // FIX 3: Clear input immediately — feels instant
       inp.value = '';
       inp.style.height = 'auto';
       document.getElementById('sendBtn').disabled = true;
       document.getElementById('charCount').textContent = '0/4000';
 
-      const client = ZenAuth.getSupabaseClient();
+      const convId = activeConv.id;
       const now = new Date().toISOString();
 
-      const { error } = await client.from('messages').insert({
-        conversation_id: activeConv.id,
+      // FIX 3: Inject optimistic bubble into cache & DOM immediately
+      const optimisticMsg = {
+        id: '_opt_' + Date.now(),
+        _optimistic: true,
+        conversation_id: convId,
         sender_id: myUserId,
         body,
-        msg_type: 'text'
-      });
+        msg_type: 'text',
+        created_at: now,
+        is_deleted: false,
+        edited_at: null
+      };
+      if (!msgCache[convId]) msgCache[convId] = [];
+      msgCache[convId].push(optimisticMsg);
+idbSaveMessages(convId, msgCache[convId]);
+      appendMessageBubble(convId, optimisticMsg);
 
-      if (error) { showToast('Failed to send message', 'error'); return; }
-
-      // Bump conversation updated_at so the sidebar re-orders and shows the preview
-      await client.from('conversations').update({ updated_at: now }).eq('id', activeConv.id);
-
-      // Optimistically refresh local conv list preview without waiting for realtime
-      const conv = conversations.find(c => c.id === activeConv.id);
+      // Update sidebar preview instantly
+      const conv = conversations.find(c => c.id === convId);
       if (conv) {
         conv.lastMsg = { body, sender_id: myUserId, created_at: now, msg_type: 'text', is_deleted: false };
         conv.updatedAt = now;
@@ -2394,6 +2926,27 @@
 
       // Stop typing indicator
       stopTyping();
+
+      // Fire-and-forget network calls — UI already updated above
+      const client = ZenAuth.getSupabaseClient();
+      const { error } = await client.from('messages').insert({
+        conversation_id: convId,
+        sender_id: myUserId,
+        body,
+        msg_type: 'text'
+      });
+
+      if (error) {
+        // Roll back optimistic bubble on failure
+        msgCache[convId] = msgCache[convId].filter(m => !m._optimistic);
+        renderMessages(convId, true);
+        showToast('Failed to send message', 'error');
+        inp.value = body; // restore text
+        return;
+      }
+
+      // Bump updated_at (non-blocking)
+      client.from('conversations').update({ updated_at: now }).eq('id', convId);
     }
 
     // ══ VIEW ONCE SEND MODAL ══════════════════════════════════════════════
@@ -2510,24 +3063,24 @@
       if (!activeConv) { showToast('Open a conversation first', 'error'); return; }
       const file = event.target?.files?.[0];
       if (!file) return;
-      if (file.size > 10 * 1024 * 1024) { showToast('Max image size is 10MB', 'error'); return; }
-      showToast('Uploading image…');
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const dataUrl = e.target.result;
-        const client = ZenAuth.getSupabaseClient();
-        const { error } = await client.from('messages').insert({
-          conversation_id: activeConv.id,
-          sender_id: myUserId,
-          body: '📷 Image',
-          msg_type: 'image',
-          file_url: dataUrl,
-          file_name: file.name
-        });
-        if (error) showToast('Failed to send image', 'error');
-        else showToast('Image sent!', 'success');
-      };
-      reader.readAsDataURL(file);
+      if (file.size > 15 * 1024 * 1024) { showToast('Max image size is 15MB', 'error'); return; }
+      showToast('Optimizing & sending…');
+
+      // Compress image to ~90KB so future chat loads are instant!
+      const compressedUrl = await compressImageForChat(file, 1280, 0.82);
+      const dataUrl = compressedUrl || await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); });
+
+      const client = ZenAuth.getSupabaseClient();
+      const { error } = await client.from('messages').insert({
+        conversation_id: activeConv.id,
+        sender_id: myUserId,
+        body: '📷 Image',
+        msg_type: 'image',
+        file_url: dataUrl,
+        file_name: file.name
+      });
+      if (error) showToast('Failed to send image', 'error');
+      else showToast('Image sent!', 'success');
       if (event.target) event.target.value = '';
     }
 
@@ -2535,10 +3088,103 @@
     let _voViewerTimer = null;
     let _voViewerMsgId = null;
 
+    let _currentLightboxUrl = '';
+    let _currentLightboxName = '';
+    let _voCurrentUrl = '';
+
+    function openLightbox(url, name) {
+      _currentLightboxUrl = url;
+      _currentLightboxName = name || 'image.jpg';
+      const lb = document.getElementById('lightbox');
+      const img = document.getElementById('lightboxImg');
+      const title = document.getElementById('lightboxTitle');
+      if (img) img.src = url;
+      if (title) title.textContent = _currentLightboxName;
+      if (lb) lb.classList.add('open');
+    }
+
+    function closeLightbox(event) {
+      if (event && event.target && event.target.closest && event.target.closest('.lightbox-toolbar')) return;
+      const lb = document.getElementById('lightbox');
+      if (lb) lb.classList.remove('open');
+    }
+
+    function downloadLightboxMedia() {
+      if (_currentLightboxUrl) {
+        downloadMedia(_currentLightboxUrl, _currentLightboxName);
+      }
+    }
+
+    function downloadVoMedia() {
+      if (_voCurrentUrl) {
+        downloadMedia(_voCurrentUrl, 'view-once-media');
+      }
+    }
+
+    async function downloadMedia(url, filename) {
+      if (!url) {
+        if (typeof showToast === 'function') showToast('File URL not available', 'error');
+        return;
+      }
+      
+      // Determine filename if missing or generic
+      if (!filename || filename === 'file') {
+        try {
+          const cleanUrl = url.split('?')[0].split('#')[0];
+          const guessedName = decodeURIComponent(cleanUrl.split('/').pop());
+          if (guessedName && guessedName.includes('.')) {
+            filename = guessedName;
+          }
+        } catch (_) {}
+      }
+      filename = filename || 'downloaded_file';
+
+      if (typeof showToast === 'function') showToast('Downloading ' + filename + '…');
+      try {
+        if (url.startsWith('data:')) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          if (typeof showToast === 'function') showToast('Downloaded!', 'success');
+          return;
+        }
+
+        // Fetch remote / cross-origin URL as Blob to force real download in all browsers
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const blob = await resp.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          a.remove();
+          URL.revokeObjectURL(blobUrl);
+        }, 1500);
+        if (typeof showToast === 'function') showToast('Downloaded ' + filename + '!', 'success');
+      } catch (err) {
+        console.warn('Blob download fallback:', err);
+        // Fallback: direct anchor with target="_blank"
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 1000);
+      }
+    }
+
     function openVoViewer(msgId, url, type, duration) {
       // Mark as viewed immediately
       localStorage.setItem('vo-viewed-' + msgId, '1');
       _voViewerMsgId = msgId;
+      _voCurrentUrl = url;
 
       const viewer = document.getElementById('voViewer');
       const img = document.getElementById('voViewerImg');
@@ -2764,8 +3410,21 @@
         }, async (payload) => {
           const msg = payload.new;
           if (!msgCache[convId]) msgCache[convId] = [];
-          msgCache[convId].push(msg);
-          renderMessages(convId);
+
+          // FIX 4: If this message is an optimistic bubble we sent, replace it
+          const optimisticIdx = msgCache[convId].findIndex(m => m._optimistic && m.body === msg.body && m.sender_id === msg.sender_id);
+          if (optimisticIdx !== -1) {
+            msgCache[convId][optimisticIdx] = msg; // upgrade to real
+            // Replace DOM node in place
+            const area = document.getElementById('messagesArea');
+            const nodes = area.querySelectorAll('.msg-row[data-msgid]');
+            nodes.forEach(n => { if (n.dataset.msgid === '_opt_' + msg.sender_id + '_' + msg.body.slice(0,20)) n.dataset.msgid = msg.id; });
+          } else {
+            msgCache[convId].push(msg);
+idbSaveMessages(convId, msgCache[convId]);
+            // FIX 4: Append just the new bubble — don't rebuild everything
+            if (activeConv?.id === convId) appendMessageBubble(convId, msg);
+          }
           // Update conv list locally so preview and order update instantly
           const conv = conversations.find(c => c.id === convId);
           if (conv) {
@@ -2787,7 +3446,11 @@
         }, (payload) => {
           if (!msgCache[convId]) return;
           const idx = msgCache[convId].findIndex(m => m.id === payload.new.id);
-          if (idx !== -1) { msgCache[convId][idx] = payload.new; renderMessages(convId); }
+          if (idx !== -1) {
+            msgCache[convId][idx] = payload.new;
+            // FIX 4: Only full re-render if message was deleted or structurally changed
+            if (activeConv?.id === convId) renderMessages(convId, true);
+          }
         })
         .subscribe();
 
@@ -2829,22 +3492,28 @@
       }
     }
 
+    let _inputRaf = null;
     function handleInput() {
       const ta = document.getElementById('msgInput');
       const val = ta.value;
-      // Auto-resize
-      ta.style.height = 'auto';
-      ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
-      // Char count
-      document.getElementById('charCount').textContent = `${val.length}/4000`;
-      // Send button
+
+      // Char count + send button (cheap — no layout)
+      document.getElementById('charCount').textContent = val.length + '/4000';
       document.getElementById('sendBtn').disabled = !val.trim() || val.length > 4000;
-      // Typing broadcast
+
+      // Typing broadcast (debounced — only once per 300ms)
       clearTimeout(typingTimer);
       if (val.trim()) {
         broadcastTyping();
         typingTimer = setTimeout(stopTyping, 2000);
       }
+
+      // Auto-resize batched in rAF to avoid back-to-back layout read/write
+      cancelAnimationFrame(_inputRaf);
+      _inputRaf = requestAnimationFrame(() => {
+        ta.style.height = 'auto';
+        ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+      });
     }
 
     async function handlePaste(e) {

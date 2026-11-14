@@ -102,7 +102,7 @@ async function signUpWithEmail(email, password, meta = {}) {
         last_name: meta.lastName || '',
         full_name: [meta.firstName, meta.lastName].filter(Boolean).join(' ') || email.split('@')[0],
       },
-      emailRedirectTo: 'https://rocksxebecc.github.io/zenspace/dashboard.html',
+      emailRedirectTo: (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000') + '/dashboard.html',
     },
   });
 

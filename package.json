@@ -1,0 +1,14 @@
+{
+    "name": "zenspace-main",
+    "version": "1.0.0",
+    "description": "Zenspace — Student Productivity & Collaboration Platform",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node server.js",
+        "server": "node server.js"
+    },
+    "lockfileVersion": 3,
+    "requires": true,
+    "packages": {}
+}
