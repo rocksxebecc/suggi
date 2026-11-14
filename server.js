@@ -869,29 +869,41 @@ CRITICAL INSTRUCTIONS:
   });
 }
 
-const server = http.createServer((req, res) => {
-  // CORS for local dev
+function handleApi(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
-  if (req.method === 'POST' && req.url === '/api/math') {
+  const parsedUrl = url.parse(req.url);
+  const pathname = parsedUrl.pathname;
+
+  if (req.method === 'POST' && pathname === '/api/math') {
     proxyMath(req, res);
-  } else if (req.method === 'POST' && req.url === '/api/generate-image') {
+  } else if (req.method === 'POST' && pathname === '/api/generate-image') {
     proxyImage(req, res);
-  } else if (req.method === 'POST' && req.url === '/api/enhance-prompt') {
+  } else if (req.method === 'POST' && pathname === '/api/enhance-prompt') {
     proxyEnhancePrompt(req, res);
-  } else if (req.method === 'POST' && req.url === '/api/pdf2ppt') {
+  } else if (req.method === 'POST' && pathname === '/api/pdf2ppt') {
     proxyPdf2Ppt(req, res);
-  } else if (req.method === 'POST' && req.url === '/api/word2pdf-ai') {
+  } else if (req.method === 'POST' && pathname === '/api/word2pdf-ai') {
     proxyWord2PdfAi(req, res);
+  } else {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Endpoint not found' }));
+  }
+}
+
+const server = http.createServer((req, res) => {
+  if (req.url.startsWith('/api/')) {
+    handleApi(req, res);
   } else {
     serveStatic(req, res);
   }
 });
 
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+if (require.main === module) {
   server.listen(PORT, () => {
     console.log('');
     console.log('  ╔══════════════════════════════════════════╗');
@@ -910,4 +922,4 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   });
 }
 
-module.exports = server;
+module.exports = { server, handleApi };
