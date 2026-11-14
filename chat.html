@@ -1467,6 +1467,89 @@
       color: #e53e3e;
     }
 
+    .call-ctrl-btn.active-sharing {
+      background: #7c3aed !important;
+      color: #fff !important;
+      box-shadow: 0 0 16px rgba(124, 58, 237, .65);
+    }
+
+    .call-video-slot.remote video.contain-fit {
+      object-fit: contain !important;
+      background: #000;
+    }
+
+    .call-pip video.no-mirror {
+      transform: none !important;
+      object-fit: contain !important;
+      background: #000;
+    }
+
+    /* Screen share audio picker popup */
+    .screen-share-menu {
+      display: none;
+      position: absolute;
+      bottom: 74px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #18191E;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
+      padding: 6px;
+      min-width: 216px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+      z-index: 100;
+      flex-direction: column;
+      gap: 4px;
+      animation: ssMenuPop .15s ease-out;
+    }
+
+    .screen-share-menu.open {
+      display: flex;
+    }
+
+    @keyframes ssMenuPop {
+      from { opacity: 0; transform: translate(-50%, 6px); }
+      to   { opacity: 1; transform: translate(-50%, 0); }
+    }
+
+    .ss-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background .15s;
+      text-align: left;
+    }
+
+    .ss-menu-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .ss-menu-item svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--accent, #7c3aed);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    .ss-menu-title {
+      font-size: .78rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .ss-menu-sub {
+      font-size: .66rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin-top: 1px;
+    }
+
     .call-ctrl-btn.end {
       background: #e53e3e;
       color: #fff;
@@ -1931,6 +2014,34 @@
           </svg>
         </button>
         <span class="ctrl-label" id="camLabel">Camera</span>
+      </div>
+      <div class="call-ctrl-wrap" id="screenCtrlWrap" style="position:relative">
+        <!-- Screen Audio Selection Popover -->
+        <div class="screen-share-menu" id="screenShareMenu">
+          <div class="ss-menu-item" onclick="startScreenShare(true)">
+            <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            <div>
+              <div class="ss-menu-title">Share with audio</div>
+              <div class="ss-menu-sub">Include system & tab sound</div>
+            </div>
+          </div>
+          <div class="ss-menu-item" onclick="startScreenShare(false)">
+            <svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+            <div>
+              <div class="ss-menu-title">Share without audio</div>
+              <div class="ss-menu-sub">Screen only (mic stays on)</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="call-ctrl-btn dark" id="btnScreen" onclick="toggleScreenShare()" title="Share screen">
+          <svg id="screenIcon" viewBox="0 0 24 24">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+        </button>
+        <span class="ctrl-label" id="screenLabel">Share</span>
       </div>
       <div class="call-ctrl-wrap">
         <button class="call-ctrl-btn end" onclick="endCall()" title="End call">
@@ -4447,11 +4558,21 @@ idbSaveMessages(convId, msgCache[convId]);
       _stopTimer();
       clearTimeout(_cs.noAnswerTimer);
       if (_cs.pc) { _cs.pc.close(); _cs.pc = null; }
+      if (_cs.mixedAudioTrack) { try { _cs.mixedAudioTrack.stop(); } catch (_) { } _cs.mixedAudioTrack = null; }
+      if (_cs.audioMixCtx) { try { _cs.audioMixCtx.close(); } catch (_) { } _cs.audioMixCtx = null; }
+      if (_cs.screenStream) { _cs.screenStream.getTracks().forEach(t => t.stop()); _cs.screenStream = null; }
       if (_cs.localStream) { _cs.localStream.getTracks().forEach(t => t.stop()); _cs.localStream = null; }
       _cs.remoteStream = null;
       ['remoteVideo', 'remoteAudio', 'localVideo'].forEach(id => { const el = document.getElementById(id); if (el) el.srcObject = null; });
       document.getElementById('localPip').classList.remove('visible');
       document.getElementById('remoteAvatarFallback').style.opacity = '1';
+      document.getElementById('localVideo')?.classList.remove('no-mirror');
+      document.getElementById('remoteVideo')?.classList.remove('contain-fit');
+      document.getElementById('screenShareMenu')?.classList.remove('open');
+      const btnSc = document.getElementById('btnScreen');
+      const lblSc = document.getElementById('screenLabel');
+      if (btnSc) btnSc.classList.remove('active-sharing');
+      if (lblSc) lblSc.textContent = 'Share';
       _hideCallOverlay();
       _hideIncoming();
       _resetState();
@@ -4467,6 +4588,8 @@ idbSaveMessages(convId, msgCache[convId]);
         offer: null, pendingIce: [],
         timerInterval: null, timerSeconds: 0, noAnswerTimer: null,
         muted: false, cameraOff: false,
+        screenStream: null, isSharingScreen: false,
+        audioMixCtx: null, mixedAudioTrack: null
       });
     }
 
@@ -4530,6 +4653,22 @@ idbSaveMessages(convId, msgCache[convId]);
         return;
       }
 
+      if (type === 'screen_share_start') {
+        const rv = document.getElementById('remoteVideo');
+        if (rv) {
+          rv.classList.add('contain-fit');
+          rv.style.display = 'block';
+        }
+        const fb = document.getElementById('remoteAvatarFallback');
+        if (fb) fb.style.opacity = '0';
+        return;
+      }
+
+      if (type === 'screen_share_stop') {
+        document.getElementById('remoteVideo')?.classList.remove('contain-fit');
+        return;
+      }
+
       if (type === 'decline') {
         clearTimeout(_cs.noAnswerTimer);
         showToast('Call declined', 'error');
@@ -4569,6 +4708,184 @@ idbSaveMessages(convId, msgCache[convId]);
       lbl.textContent = _cs.cameraOff ? 'Show cam' : 'Camera';
     }
 
+    function toggleScreenShare() {
+      if (!_cs.active || !_cs.pc) return;
+      if (_cs.isSharingScreen) {
+        stopScreenShare();
+      } else {
+        const menu = document.getElementById('screenShareMenu');
+        if (menu) {
+          const isOpen = menu.classList.toggle('open');
+          if (isOpen) {
+            setTimeout(() => {
+              document.addEventListener('click', function closeMenu(e) {
+                if (!document.getElementById('screenCtrlWrap')?.contains(e.target)) {
+                  menu.classList.remove('open');
+                  document.removeEventListener('click', closeMenu);
+                }
+              });
+            }, 10);
+          }
+        } else {
+          startScreenShare(false);
+        }
+      }
+    }
+
+    async function startScreenShare(withAudio = false) {
+      document.getElementById('screenShareMenu')?.classList.remove('open');
+
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        showToast('Screen sharing is not supported on this browser or device', 'error');
+        return;
+      }
+
+      try {
+        const constraints = {
+          video: {
+            cursor: 'always',
+            displaySurface: 'monitor'
+          },
+          audio: withAudio ? {
+            echoCancellation: true,
+            noiseSuppression: false,
+            autoGainControl: false,
+            suppressLocalAudioPlayback: false
+          } : false
+        };
+
+        const screenStream = await navigator.mediaDevices.getDisplayMedia(constraints);
+        const screenTrack = screenStream.getVideoTracks()[0];
+        if (!screenTrack) return;
+
+        _cs.screenStream = screenStream;
+        _cs.isSharingScreen = true;
+
+        // Replace outgoing video track on peer connection seamlessly
+        const senders = _cs.pc.getSenders();
+        const videoSender = senders.find(s => s.track && s.track.kind === 'video') || senders.find(s => s.track === null);
+
+        if (videoSender) {
+          await videoSender.replaceTrack(screenTrack);
+        } else {
+          _cs.pc.addTrack(screenTrack, screenStream);
+        }
+
+        // Audio mixing: if user requested audio AND screen stream captured audio
+        const sysAudioTrack = screenStream.getAudioTracks()[0];
+        const micTrack = _cs.localStream?.getAudioTracks()[0];
+
+        if (withAudio && sysAudioTrack && micTrack) {
+          try {
+            const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtxClass) {
+              const audioCtx = new AudioCtxClass();
+              const dest = audioCtx.createMediaStreamDestination();
+
+              const micSource = audioCtx.createMediaStreamSource(new MediaStream([micTrack]));
+              const sysSource = audioCtx.createMediaStreamSource(new MediaStream([sysAudioTrack]));
+
+              micSource.connect(dest);
+              sysSource.connect(dest);
+
+              const mixedAudioTrack = dest.stream.getAudioTracks()[0];
+              _cs.audioMixCtx = audioCtx;
+              _cs.mixedAudioTrack = mixedAudioTrack;
+
+              const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+              if (audioSender) {
+                await audioSender.replaceTrack(mixedAudioTrack);
+              }
+            }
+          } catch (mixErr) {
+            console.warn('[Call] Audio mix failed, staying with mic:', mixErr);
+          }
+        }
+
+        // Notify remote peer to adapt video fitting (contain mode for text clarity)
+        await _sig('screen_share_start');
+
+        // Show screen in local PiP without mirror flip
+        const lv = document.getElementById('localVideo');
+        if (lv) {
+          lv.srcObject = screenStream;
+          lv.classList.add('no-mirror');
+        }
+        document.getElementById('localPip')?.classList.add('visible');
+
+        // Update button UI
+        const btn = document.getElementById('btnScreen');
+        const lbl = document.getElementById('screenLabel');
+        if (btn) btn.classList.add('active-sharing');
+        if (lbl) lbl.textContent = 'Stop share';
+
+        // When user clicks the browser's native floating "Stop sharing" button
+        screenTrack.onended = () => {
+          stopScreenShare();
+        };
+
+        showToast(withAudio ? 'Sharing screen with audio' : 'Sharing screen');
+      } catch (err) {
+        if (err.name !== 'NotAllowedError') {
+          console.error('[Call] Screen share error:', err);
+          showToast('Could not start screen share: ' + (err.message || err.name), 'error');
+        }
+      }
+    }
+
+    async function stopScreenShare() {
+      if (!_cs.isSharingScreen) return;
+      _cs.isSharingScreen = false;
+
+      // Clean up mixed audio and restore microphone track
+      if (_cs.mixedAudioTrack) {
+        try { _cs.mixedAudioTrack.stop(); } catch (_) { }
+        _cs.mixedAudioTrack = null;
+      }
+      if (_cs.audioMixCtx) {
+        try { _cs.audioMixCtx.close(); } catch (_) { }
+        _cs.audioMixCtx = null;
+      }
+
+      const micTrack = _cs.localStream?.getAudioTracks()[0] || null;
+      const senders = _cs.pc ? _cs.pc.getSenders() : [];
+      const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+      if (audioSender && micTrack) {
+        await audioSender.replaceTrack(micTrack);
+      }
+
+      if (_cs.screenStream) {
+        _cs.screenStream.getTracks().forEach(t => t.stop());
+        _cs.screenStream = null;
+      }
+
+      // Restore camera track to peer connection
+      const cameraTrack = _cs.localStream?.getVideoTracks()[0] || null;
+      const videoSender = senders.find(s => s.track && s.track.kind === 'video') || senders.find(s => s.track === null);
+
+      if (videoSender && cameraTrack) {
+        await videoSender.replaceTrack(cameraTrack);
+      }
+
+      // Notify remote peer to restore video mode
+      await _sig('screen_share_stop');
+
+      // Restore local preview to camera
+      const lv = document.getElementById('localVideo');
+      if (lv) {
+        lv.classList.remove('no-mirror');
+        if (_cs.localStream) lv.srcObject = _cs.localStream;
+      }
+
+      // Update button UI
+      const btn = document.getElementById('btnScreen');
+      const lbl = document.getElementById('screenLabel');
+      if (btn) btn.classList.remove('active-sharing');
+      if (lbl) lbl.textContent = 'Share';
+
+      showToast('Screen sharing stopped');
+    }
+
     function toggleSpeaker() {
       document.getElementById('btnSpeaker').classList.toggle('active-muted');
     }
@@ -4577,6 +4894,7 @@ idbSaveMessages(convId, msgCache[convId]);
     function _showCallOverlay(callType) {
       document.getElementById('callOverlay').classList.add('open');
       document.getElementById('camCtrlWrap').style.display = callType === 'video' ? 'flex' : 'none';
+      document.getElementById('screenCtrlWrap').style.display = callType === 'video' ? 'flex' : 'none';
     }
     function _hideCallOverlay() { document.getElementById('callOverlay').classList.remove('open'); }
 
