@@ -394,7 +394,44 @@ async function getUserProfile() {
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
-      if (data) Object.assign(base, data);
+
+      if (data) {
+        Object.assign(base, data);
+      } else {
+        // Auto-create/restore missing profile row so user is always discoverable!
+        const rawName = meta.full_name || meta.name || user.email?.split('@')[0] || 'User';
+        let cleanBase = (user.email ? user.email.split('@')[0] : 'user')
+          .toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 16);
+        if (cleanBase.length < 3) cleanBase = cleanBase + '_user';
+
+        let candidate = cleanBase;
+        try {
+          const { data: existing } = await client.from('profiles').select('id').eq('username', candidate).maybeSingle();
+          if (existing && existing.id !== user.id) {
+            candidate = cleanBase + Math.floor(Math.random() * 900 + 100);
+          }
+
+          const newProf = {
+            id: user.id,
+            username: candidate,
+            display_name: rawName,
+            avatar_emoji: '🎓',
+            avatar_color: '#1A1A1A',
+            is_public: true
+          };
+
+          const { data: inserted } = await client
+            .from('profiles')
+            .upsert(newProf, { onConflict: 'id' })
+            .select()
+            .maybeSingle();
+
+          if (inserted) Object.assign(base, inserted);
+          else Object.assign(base, newProf);
+        } catch (_) {
+          Object.assign(base, { username: candidate, display_name: rawName });
+        }
+      }
     }
   } catch (_) { /* non-fatal — profile table may not exist */ }
 

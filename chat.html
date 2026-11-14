@@ -3625,9 +3625,12 @@ idbSaveMessages(convId, msgCache[convId]);
 
     let friendSearchTimer = null;
     async function searchFriends() {
-      const q = document.getElementById('newConvSearch').value.trim();
+      const rawQ = document.getElementById('newConvSearch').value.trim();
       const el = document.getElementById('newConvResults');
-      if (q.length < 1) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink-faint);font-size:.82rem">Type to search your friends…</div>'; return; }
+      if (rawQ.length < 1) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink-faint);font-size:.82rem">Type to search your friends…</div>'; return; }
+
+      const q = rawQ.startsWith('@') ? rawQ.slice(1).trim() : rawQ;
+      if (!q) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink-faint);font-size:.82rem">Type to search your friends…</div>'; return; }
 
       clearTimeout(friendSearchTimer);
       friendSearchTimer = setTimeout(async () => {
@@ -3641,16 +3644,46 @@ idbSaveMessages(convId, msgCache[convId]);
           .eq('status', 'accepted');
 
         const friendIds = (reqs || []).map(r => r.sender_id === myUserId ? r.receiver_id : r.sender_id);
-        if (!friendIds.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink-faint);font-size:.82rem">No friends yet. <a href="profile.html">Add some friends first!</a></div>'; return; }
 
-        const { data: profiles } = await client
-          .from('profiles')
-          .select('id, username, display_name, avatar_emoji, avatar_color, university')
-          .in('id', friendIds)
-          .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
-          .limit(10);
+        let profiles = [];
+        if (friendIds.length) {
+          const { data } = await client
+            .from('profiles')
+            .select('id, username, display_name, avatar_emoji, avatar_color, university')
+            .in('id', friendIds)
+            .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+            .limit(10);
+          profiles = data || [];
+        }
 
-        if (!profiles?.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink-faint);font-size:.82rem">No friends match your search.</div>'; return; }
+        if (!profiles.length) {
+          // If no accepted friends match, search all users on Zenspace so user can add them
+          const { data: globalUsers } = await client
+            .from('profiles')
+            .select('id, username, display_name, avatar_emoji, avatar_color, university')
+            .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+            .neq('id', myUserId)
+            .limit(5);
+
+          if (globalUsers?.length) {
+            el.innerHTML = `
+              <div style="padding:8px 14px;font-size:.72rem;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.05em">Not in your friends list</div>
+              ${globalUsers.map(u => `
+                <div class="ncp-user-row" onclick="window.location.href='profile.html'">
+                  <div class="ncp-user-avatar" style="background:${u.avatar_color || '#1A1A1A'}">${u.avatar_emoji || ''}</div>
+                  <div class="ncp-user-info">
+                    <div class="ncp-user-name">${esc(u.display_name || u.username)}</div>
+                    <div class="ncp-user-sub">@${esc(u.username)} · Tap to send friend request</div>
+                  </div>
+                  <span style="font-size:.74rem;color:var(--accent,#7c3aed);font-weight:600;padding:4px 8px;border-radius:4px;background:rgba(124,58,237,0.1)">+ Add</span>
+                </div>
+              `).join('')}`;
+            return;
+          }
+
+          el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink-faint);font-size:.82rem">No users found. <a href="profile.html" style="color:var(--accent,#7c3aed)">Add friends in Profile</a></div>';
+          return;
+        }
 
         el.innerHTML = profiles.map(p => `
       <div class="ncp-user-row" onclick="startConvWith('${p.id}')">

@@ -1396,20 +1396,22 @@
     ══════════════════════════════════════════ */
     let searchTimer = null;
     async function searchUsers() {
-      const q = document.getElementById('friendSearchInput').value.trim();
+      const rawQ = document.getElementById('friendSearchInput').value.trim();
       const results = document.getElementById('searchResults');
-      if (q.length < 2) { results.classList.remove('visible'); return; }
+      if (rawQ.length < 1) { results.classList.remove('visible'); return; }
+
+      const q = rawQ.startsWith('@') ? rawQ.slice(1).trim() : rawQ;
+      if (!q) { results.classList.remove('visible'); return; }
 
       clearTimeout(searchTimer);
       searchTimer = setTimeout(async () => {
         const client = ZenAuth.getSupabaseClient();
         const { data, error } = await client
           .from('profiles')
-          .select('id, username, display_name, bio, avatar_emoji, avatar_color, university, course')
+          .select('id, username, display_name, bio, avatar_emoji, avatar_color, university, course, is_public')
           .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
           .neq('id', myUserId)
-          .eq('is_public', true)
-          .limit(8);
+          .limit(10);
 
         if (error || !data?.length) {
           results.innerHTML = '<div class="empty-msg" style="padding:14px">No users found.</div>';
@@ -1478,6 +1480,10 @@
       // Check profile exists
       if (!myProfile) { showToast('Save your profile first!', 'error'); switchTab('settings'); return; }
 
+      // Clear any previous declined/stale request to ensure clean insert
+      await client.from('friend_requests').delete().eq('sender_id', myUserId).eq('receiver_id', receiverId);
+      await client.from('friend_requests').delete().eq('sender_id', receiverId).eq('receiver_id', myUserId);
+
       const { error } = await client.from('friend_requests').insert({
         sender_id: myUserId,
         receiver_id: receiverId,
@@ -1536,9 +1542,11 @@
     async function unfriend(friendId) {
       if (!confirm('Remove this friend?')) return;
       const client = ZenAuth.getSupabaseClient();
-      await client.from('friend_requests').delete()
-        .or(`and(sender_id.eq.${myUserId},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${myUserId})`);
-      showToast('Friend removed.'); loadFriendData();
+      await client.from('friend_requests').delete().eq('sender_id', myUserId).eq('receiver_id', friendId);
+      await client.from('friend_requests').delete().eq('sender_id', friendId).eq('receiver_id', myUserId);
+      showToast('Friend removed.');
+      loadFriendData();
+      if (document.getElementById('friendSearchInput')?.value.trim()) searchUsers();
     }
 
     /* ══════════════════════════════════════════
